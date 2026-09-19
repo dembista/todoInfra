@@ -1,0 +1,45 @@
+name: Monitoring & Infrastructure
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ansible/roles/prometheus/**'
+      - 'ansible/roles/grafana/**'
+      - 'ansible/roles/sonarqube/**'
+      - 'ansible/roles/traefik/**'
+      - 'ansible/roles/docker/**'
+      - 'ansible/inventory/**'
+      - 'ansible/playbooks/setup.yml'
+
+jobs:
+  provision:
+    name: Provisionner serveurs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Ansible
+        run: |
+          pip install --upgrade pip
+          pip install "ansible-core<2.21" 
+          ansible-galaxy collection install community.docker --upgrade
+
+      - name: Préparer la clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/todo-app.pem
+          chmod 600 ~/.ssh/todo-app.pem
+
+      - name: Configurer l'inventaire pour le CI
+        run: |
+          sed -i "s|ansible_ssh_private_key_file:.*|ansible_ssh_private_key_file: ~/.ssh/todo-app.pem|" \
+            ansible/inventory/hosts.yml
+          cat ansible/inventory/hosts.yml
+
+      - name: Exécuter le provisionnement
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/setup.yml

@@ -23,6 +23,13 @@
     mode: "0644"
   notify: Relancer Prometheus
 
+- name: Copie des règles d'alerte Prometheus
+  ansible.builtin.template:
+    src: alert-rules.yml.j2
+    dest: /opt/prometheus/alert-rules.yml
+    mode: "0644"
+  notify: Relancer Prometheus
+
 - name: Copie du docker-compose Prometheus
   ansible.builtin.template:
     src: docker-compose.yml.j2

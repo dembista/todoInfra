@@ -1,0 +1,83 @@
+# Règles d'alerte Prometheus — todo-infra
+# Couvre : état des conteneurs, serveur (CPU, RAM, disque), failles
+# (réseau/ports), redondances (replicas), et cohérence de l'infra.
+groups:
+  - name: todo-infra-serveur
+    rules:
+      - alert: ServeurInjoignable
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} injoignable"
+          description: "Le scraping Prometheus échoue sur {{ $labels.instance }} depuis 2 minutes."
+
+      - alert: CPUEleve
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU > 85% sur {{ $labels.instance }}"
+          description: "Utilisation CPU à {{ $value | humanize }}% depuis 10 minutes."
+
+      - alert: MemoirePlusEchange
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAM proche de la saturation sur {{ $labels.instance }}"
+          description: "Mémoire utilisée à {{ $value | humanize }}%."
+
+      - alert: DisquePresquePlein
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disque rempli à {{ $value | humanize }}% sur {{ $labels.mountpoint }}"
+          description: "Le système de fichiers {{ $labels.mountpoint }} sur {{ $labels.instance }} dépasse 85%."
+
+      - alert: ChargeServeurElevee
+        expr: node_load1 / on(instance) count by(instance)(node_cpu_seconds_total{mode="system"}) > 4
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Load average critique sur {{ $labels.instance }}"
+          description: "Load1 > 4 sur {{ $labels.instance }} depuis 10 minutes (risque de saturation SSH/CPU)."
+
+  - name: todo-infra-conteneurs
+    rules:
+      - alert: ConteneurNonDemarre
+        expr: time() - container_start_time_seconds{container!=""} > 120 and container_last_seen > 0 and on(container,instance) container_start_time_seconds * 0 == 0 or (time() - process_start_time_seconds{job="cadvisor"} > 300 and on(job,job) process_start_time_seconds == 0)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Conteneur {{ $labels.name }} redémarre sans cesse"
+          description: "Le conteneur {{ $labels.name }} restarte en boucle (CrashLoopBackOff potentiel)."
+
+      - alert: RedondancePerdue
+        # Alerte quand un service attendu (3 replicas) n'a plus assez de réplicas up.
+        expr: min by (job) (up{job="traefik"}) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Perte de redondance sur {{ $labels.job }}"
+          description: "Aucun réplica de {{ $labels.job }} ne répond (HA perdue)."
+
+  - name: todo-infra-failles
+    rules:
+      - alert: PortServiceInaccessible
+        # Traefik ne route plus vers un service → généralisé au niveau des targets up.
+        expr: count by (job) (up{job!~"prometheus"} == 0) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} en échec"
+          description: "La target {{ $labels.job }} ne répond plus ({{ $labels.instance }})."

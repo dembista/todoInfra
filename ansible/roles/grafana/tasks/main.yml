@@ -9,6 +9,7 @@
     - /opt/grafana/data
     - /opt/grafana/provisioning/datasources
     - /opt/grafana/provisioning/dashboards
+    - /opt/grafana/dashboards
 
 - name: Permissions du dossier de données (uid 472 = utilisateur du conteneur)
   ansible.builtin.file:
@@ -22,6 +23,20 @@
   ansible.builtin.copy:
     src: prometheus-datasource.yml
     dest: /opt/grafana/provisioning/datasources/prometheus.yml
+    mode: "0644"
+  notify: Relancer Grafana
+
+- name: Copie du provider de dashboards pour Grafana
+  ansible.builtin.copy:
+    src: dashboard-provider.yml
+    dest: /opt/grafana/provisioning/dashboards/provider.yml
+    mode: "0644"
+  notify: Relancer Grafana
+
+- name: Copie du dashboard Todo-Infra
+  ansible.builtin.copy:
+    src: todo-infra-dashboard.json
+    dest: /opt/grafana/dashboards/todo-infra-dashboard.json
     mode: "0644"
   notify: Relancer Grafana
 

@@ -15,6 +15,7 @@ services:
     volumes:
       - /opt/grafana/data:/var/lib/grafana
       - /opt/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /opt/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - traefik
 
