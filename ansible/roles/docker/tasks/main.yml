@@ -1,0 +1,50 @@
+---
+- name: Mise à jour des paquets
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Installation des prérequis
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - gnupg
+    - software-properties-common
+
+- name: Ajout de la clé GPG officielle Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Ajout du dépôt officiel Docker
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Installation de Docker Engine + plugins
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+
+- name: Démarrage et activation du service Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ajout de l'utilisateur au groupe docker
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true

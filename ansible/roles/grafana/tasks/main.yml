@@ -1,0 +1,38 @@
+---
+- name: Création des répertoires Grafana
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/grafana
+    - /opt/grafana/data
+    - /opt/grafana/provisioning/datasources
+    - /opt/grafana/provisioning/dashboards
+
+- name: Permissions du dossier de données (uid 472 = utilisateur du conteneur)
+  ansible.builtin.file:
+    path: /opt/grafana/data
+    state: directory
+    owner: "472"
+    group: "472"
+    mode: "0755"
+
+- name: Copie de la datasource Prometheus pour Grafana
+  ansible.builtin.copy:
+    src: prometheus-datasource.yml
+    dest: /opt/grafana/provisioning/datasources/prometheus.yml
+    mode: "0644"
+  notify: Relancer Grafana
+
+- name: Copie du docker-compose Grafana
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/grafana/docker-compose.yml
+    mode: "0644"
+  notify: Relancer Grafana
+
+- name: Démarrage de Grafana
+  ansible.builtin.command: docker compose -f /opt/grafana/docker-compose.yml up -d
+  register: grafana_result
+  changed_when: grafana_result.rc == 0

@@ -1,0 +1,4 @@
+---
+# Variables spécifiques à l'environnement dev
+# Laisser vide tant qu'aucun domaine n'est configuré.
+domain_name: ""

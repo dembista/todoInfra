@@ -1,0 +1,8 @@
+environment   = "dev"
+aws_region    = "eu-west-3"
+project_name  = "todo-app"
+instance_type = "t3.small"
+key_name      = "todo-app"
+ssh_cidr      = "0.0.0.0/0"
+# domain_name       = "dev.todo-app.example.com"
+# route53_zone_id   = "ZXXXXXXXXXXXXXXXXXX"

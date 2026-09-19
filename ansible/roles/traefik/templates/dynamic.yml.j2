@@ -1,0 +1,64 @@
+# Configuration dynamique Traefik.
+# L'application est routée via les labels Docker (cf. deploy-app.yml).
+# Ce fichier gère uniquement le dashboard et le monitoring.
+
+http:
+  routers:
+
+{% if domain_name %}
+    sonarqube:
+      rule: "Host(`{{ sonarqube_host }}`)"
+      entryPoints:
+        - websecure
+      service: sonarqube-service
+      tls:
+        certResolver: letsencrypt
+
+    traefik-dashboard:
+      rule: "Host(`{{ traefik_host }}`)"
+      entryPoints:
+        - websecure
+      service: api@internal
+      tls:
+        certResolver: letsencrypt
+
+    prometheus:
+      rule: "Host(`prometheus.{{ domain_name }}`)"
+      entryPoints:
+        - websecure
+      service: prometheus-service
+      tls:
+        certResolver: letsencrypt
+
+    grafana:
+      rule: "Host(`grafana.{{ domain_name }}`)"
+      entryPoints:
+        - websecure
+      service: grafana-service
+      tls:
+        certResolver: letsencrypt
+
+    services:
+      sonarqube-service:
+        loadBalancer:
+          servers:
+            - url: "http://sonarqube:9000"
+
+      prometheus-service:
+        loadBalancer:
+          servers:
+            - url: "http://prometheus:9090"
+
+      grafana-service:
+        loadBalancer:
+          servers:
+            - url: "http://grafana:3000"
+{% else %}
+
+    # Sans domaine : dashboard Traefik accessible via le port 8080 uniquement
+    traefik-dashboard:
+      rule: "HostRegexp(`{any:.*}`)"
+      entryPoints:
+        - traefik
+      service: api@internal
+{% endif %}

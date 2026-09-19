@@ -1,0 +1,11 @@
+---
+- name: Relancer Traefik
+  ansible.builtin.command: docker compose -f /opt/traefik/docker-compose.yml up -d
+  register: traefik_result
+  changed_when: traefik_result.rc == 0
+
+- name: Vérifier Traefik
+  ansible.builtin.command: docker inspect -f "{{ '{{.State.Running}}' }}" traefik
+  register: traefik_state
+  failed_when: traefik_state.stdout != "true"
+  changed_when: false

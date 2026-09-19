@@ -1,0 +1,9 @@
+---
+# Variables par défaut du rôle sonarqube (surchargeables par environnement)
+sonarqube_version: "lts-community"
+sonarqube_postgres_version: "16"
+sonarqube_db_name: "sonar"
+sonarqube_db_user: "sonar"
+sonarqube_db_password: "change-me-sonar-db"
+sonarqube_default_admin_login: "admin"
+sonarqube_default_admin_password: "change-me-sonar-admin"

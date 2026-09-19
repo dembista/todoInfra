@@ -1,0 +1,3 @@
+---
+# Variables spécifiques à l'environnement prod
+domain_name: "madakhoun.duckdns.org"

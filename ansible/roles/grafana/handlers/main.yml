@@ -1,0 +1,11 @@
+---
+- name: Relancer Grafana
+  ansible.builtin.command: docker compose -f /opt/grafana/docker-compose.yml up -d
+  register: grafana_result
+  changed_when: grafana_result.rc == 0
+
+- name: Vérifier que le conteneur Grafana tourne
+  ansible.builtin.command: docker inspect -f "{{ '{{.State.Running}}' }}" grafana
+  register: grafana_state
+  failed_when: grafana_state.stdout != "true"
+  changed_when: false

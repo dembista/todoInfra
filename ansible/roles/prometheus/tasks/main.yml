@@ -1,0 +1,36 @@
+---
+- name: Création des répertoires Prometheus
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/prometheus
+    - /opt/prometheus/data
+
+- name: Permissions du dossier de données (uid 65534 = utilisateur du conteneur)
+  ansible.builtin.file:
+    path: /opt/prometheus/data
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0755"
+
+- name: Copie de la configuration Prometheus
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /opt/prometheus/prometheus.yml
+    mode: "0644"
+  notify: Relancer Prometheus
+
+- name: Copie du docker-compose Prometheus
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/prometheus/docker-compose.yml
+    mode: "0644"
+  notify: Relancer Prometheus
+
+- name: Démarrage de Prometheus
+  ansible.builtin.command: docker compose -f /opt/prometheus/docker-compose.yml up -d
+  register: prometheus_result
+  changed_when: prometheus_result.rc == 0

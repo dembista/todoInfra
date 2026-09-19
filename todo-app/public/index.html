@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo App</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 16px; }
+    h1 { color: #333; }
+    input { padding: 8px; width: 70%; }
+    button { padding: 8px 16px; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+    li.done span { text-decoration: line-through; color: #aaa; }
+    .actions button { margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Todo App</h1>
+  <p id="env"></p>
+  <form id="form">
+    <input id="title" placeholder="Nouvelle tâche..." required />
+    <button type="submit">Ajouter</button>
+  </form>
+  <ul id="todos"></ul>
+  <script>
+    const envEl = document.getElementById('env');
+    const form = document.getElementById('form');
+    const titleInput = document.getElementById('title');
+    const list = document.getElementById('todos');
+
+    fetch('/api/health').then(r => r.json()).then(h => {
+      envEl.textContent = `Environnement : ${h.env}`;
+    });
+
+    async function load() {
+      const res = await fetch('/api/todos');
+      const todos = await res.json();
+      list.innerHTML = '';
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.className = todo.done ? 'done' : '';
+        const span = document.createElement('span');
+        span.textContent = todo.title;
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const toggle = document.createElement('button');
+        toggle.textContent = todo.done ? '✗' : '✓';
+        toggle.onclick = async () => {
+          await fetch(`/api/todos/${todo.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: !todo.done }) });
+          load();
+        };
+        const del = document.createElement('button');
+        del.textContent = 'Suppr';
+        del.onclick = async () => {
+          await fetch(`/api/todos/${todo.id}`, { method: 'DELETE' });
+          load();
+        };
+        actions.append(toggle, del);
+        li.append(span, actions);
+        list.appendChild(li);
+      });
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      if (!title) return;
+      await fetch('/api/todos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+      titleInput.value = '';
+      load();
+    };
+
+    load();
+  </script>
+</body>
+</html>

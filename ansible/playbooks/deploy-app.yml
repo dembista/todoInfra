@@ -1,0 +1,48 @@
+- name: Déployer l'application todo
+  hosts: "{{ target }}"
+  become: true
+
+  vars:
+    target: "{{ target | default('prod') }}"
+    app_image: "{{ app_image | default('demba087/todo-app:latest') }}"
+    app_host: "{{ domain_name if domain_name else hostvars[inventory_hostname]['ansible_host'] }}"
+    app_env: "{{ 'production' if target == 'prod' else 'development' }}"
+    base_labels:
+      traefik.enable: "true"
+      traefik.http.routers.todo-app.rule: "Host(`{{ app_host }}`)"
+      traefik.http.routers.todo-app.entrypoints: "{{ 'web,websecure' if domain_name else 'web' }}"
+      traefik.http.services.todo-app.loadbalancer.server.port: "{{ app_port }}"
+    tls_labels:
+      traefik.http.routers.todo-app.tls: "true"
+      traefik.http.routers.todo-app.tls.certresolver: "letsencrypt"
+    traefik_labels: "{{ base_labels | combine(tls_labels if domain_name else {}) }}"
+
+  tasks:
+    - name: Se connecter à Docker Hub (demba087)
+      community.docker.docker_login:
+        registry_url: index.docker.io
+        username: "{{ dockerhub_username | default('demba087') }}"
+        password: "{{ dockerhub_token | default('') }}"
+
+    - name: Téléchargement des images depuis GHCR
+      community.docker.docker_image:
+        name: "{{ app_image }}"
+        source: pull
+
+    - name: Créer le réseau partagé avec Traefik
+      community.docker.docker_network:
+        name: "{{ traefik_network }}"
+        state: present
+
+    - name: Lancer ou mettre à jour le conteneur application
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        image: "{{ app_image }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ traefik_network }}"
+        env:
+          NODE_ENV: "{{ app_env }}"
+          PORT: "{{ app_port }}"
+        labels: "{{ traefik_labels }}"

@@ -1,0 +1,32 @@
+---
+- name: Provisionnement complet de l'infrastructure (Docker, Traefik, Sonarqube, Prometheus, Grafana)
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Inclure les rôles de provisioning
+      ansible.builtin.import_role:
+        name: docker
+    - name: Inclure le rôle traefik
+      ansible.builtin.import_role:
+        name: traefik
+    - name: Inclure le rôle sonarqube
+      ansible.builtin.import_role:
+        name: sonarqube
+    - name: Inclure le rôle prometheus
+      ansible.builtin.import_role:
+        name: prometheus
+    - name: Inclure le rôle grafana
+      ansible.builtin.import_role:
+        name: grafana
+
+    - name: Afficher le résumé de l'installation
+      ansible.builtin.debug:
+        msg:
+          - "Outils installés sur {{ inventory_hostname }} :"
+          - "  Docker (+ compose plugin)"
+          - "  Traefik (port 80/443)"
+          - "  Sonarqube (port 9000) + PostgreSQL"
+          - "  Prometheus (port 9090)"
+          - "  Grafana (port 3000)"

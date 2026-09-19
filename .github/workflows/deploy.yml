@@ -1,0 +1,121 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKERHUB_IMAGE: demba087/todo-app
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ---------- CI : tests ----------
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: todo-app/package-lock.json
+
+      - name: Installer les dépendances
+        working-directory: todo-app
+        run: npm ci
+
+      - name: Lancer les tests
+        working-directory: todo-app
+        run: npm test
+
+  # ---------- CI/CD : build & push de l'image ----------
+  build-and-push-image:
+    name: Build & push de l'image Docker
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Nom de l'image en minuscules
+        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      # ---------- Connexion à Docker Hub (demba087) ----------
+      - name: Se connecter à Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et push de l'image Todo-app
+        uses: docker/build-push-action@v5
+        with:
+          context: todo-app
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.ref_name }}
+            ${{ env.DOCKERHUB_IMAGE }}:latest
+
+  # ---------- CI/CD : déploiement ----------
+  deploy:
+    name: Déployer vers ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    needs: build-and-push-image
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Ansible
+        run: |
+          pip install --upgrade pip
+          pip install "ansible-core<2.17"
+          ansible-galaxy collection install community.docker --upgrade
+
+      # Choisir l'environnement cible selon la branche
+      - name: Définir l'environnement cible
+        id: env
+        run: |
+          echo "image_lowercase=demba087/todo-app" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "env=prod" >> "$GITHUB_OUTPUT"
+            echo "host=${{ vars.PROD_HOST }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=dev" >> "$GITHUB_OUTPUT"
+            echo "host=${{ vars.DEV_HOST }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Installer la clé SSH
+        run: |
+          mkdir -p ansible/todo-app
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ansible/todo-app/todo-app.pem
+          chmod 600 ansible/todo-app/todo-app.pem
+
+      - name: Déployer l'application
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          echo "Déploiement vers ${{ steps.env.outputs.env }} (hôte ${{ steps.env.outputs.host }})"
+          ansible-playbook \
+            -i ansible/inventory/hosts.yml \
+            ansible/playbooks/deploy-app.yml \
+            --limit "${{ steps.env.outputs.env }}" \
+            --extra-vars "target=${{ steps.env.outputs.env }} app_image=${{ steps.env.outputs.image_lowercase }}:${{ github.ref_name }} ansible_host=${{ steps.env.outputs.host }} ansible_ssh_private_key_file=ansible/todo-app/todo-app.pem dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }} dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}"

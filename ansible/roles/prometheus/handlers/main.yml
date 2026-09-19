@@ -1,0 +1,11 @@
+---
+- name: Relancer Prometheus
+  ansible.builtin.command: docker compose -f /opt/prometheus/docker-compose.yml up -d
+  register: prometheus_result
+  changed_when: prometheus_result.rc == 0
+
+- name: Vérifier que le conteneur Prometheus tourne
+  ansible.builtin.command: docker inspect -f "{{ '{{.State.Running}}' }}" prometheus
+  register: prometheus_state
+  failed_when: prometheus_state.stdout != "true"
+  changed_when: false

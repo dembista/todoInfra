@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    volumes:
+      - /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /opt/prometheus/data:/prometheus
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

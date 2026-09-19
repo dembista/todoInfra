@@ -1,0 +1,73 @@
+@startuml Architecture_Par_Couches_Spring_Boot
+
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam packageStyle rectangle
+
+title Architecture par Couches - Application Spring Boot avec Sécurité JWT
+
+actor Client as "Client (Angular / Mobile)"
+
+package "0. Couche Sécurité & Authentification" #APPLICATION {
+	[SecurityConfig] as SecConfig
+	[JwtAuthenticationFilter] as JwtFilter
+	[UserDetailsService] as UserDetailsSvc
+}
+
+package "1. Couche Présentation (REST API)" #LIGHTBLUE {
+	[AuthController] as AuthCtrl
+	[WalletController] as WalletCtrl
+    
+	package "DTOs (Data Transfer Objects)" #LIGHTCYAN {
+		[LoginRequestDto]
+		[AuthResponseDto]
+		[WalletRequestDto]
+		[WalletResponseDto]
+	}
+}
+
+package "2. Couche Métier (Business Services)" #LIGHTGREEN {
+	[AuthService] as AuthSvc
+	[WalletService] as WalletSvc
+}
+
+package "3. Couche Accès aux Données (Repositories)" #LIGHTYELLOW {
+	[UserRepository] as UserRepo
+	[WalletRepository] as WalletRepo
+}
+
+package "4. Couche Domaine / Persistance (Entities)" #LIGHTPINK {
+	[User] as UserEntity
+	[Wallet] as WalletEntity
+}
+
+database "Base de Données (PostgreSQL)" as DB #ORANGE
+
+' --- Interactions et flux ---
+
+Client --> JwtFilter : 1. Requête HTTP + Bearer Token
+JwtFilter --> SecConfig : Validation des règles d'accès
+JwtFilter --> UserDetailsSvc : Charge les privilèges de l'utilisateur
+
+Client --> AuthCtrl : Appel API Auth (/api/auth)
+Client --> WalletCtrl : Appel API Métier (/api/wallets)
+
+AuthCtrl ..> LoginRequestDto : Reçoit
+AuthCtrl ..> AuthResponseDto : Retourne
+WalletCtrl ..> WalletRequestDto : Reçoit
+WalletCtrl ..> WalletResponseDto : Retourne
+
+AuthCtrl --> AuthSvc : Invoque la logique
+WalletCtrl --> WalletSvc : Invoque la logique
+
+AuthSvc --> UserRepo : Requête utilisateur
+WalletSvc --> WalletRepo : Requête solde / opérations
+WalletSvc --> UserRepo : Vérifie l'existence du propriétaire
+
+UserRepo --> UserEntity : Manipule
+WalletRepo --> WalletEntity : Manipule
+
+UserRepo --> DB : Exécute requêtes SQL / JPA
+WalletRepo --> DB : Exécute requêtes SQL / JPA
+
+@enduml

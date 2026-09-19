@@ -1,0 +1,48 @@
+api:
+  dashboard: true
+  insecure: true
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+entryPoints:
+  web:
+    address: ":80"
+{% if domain_name %}
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+{% endif %}
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik
+  file:
+    directory: /etc/traefik/config
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: {{ traefik_acme_email }}
+      storage: /etc/traefik/certs/acme.json
+      httpChallenge:
+        entryPoint: web
+
+log:
+  level: INFO
+  filePath: /etc/traefik/logs/traefik.log
+
+accessLog:
+  filePath: /etc/traefik/logs/access.log

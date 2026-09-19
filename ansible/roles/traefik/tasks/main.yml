@@ -1,0 +1,44 @@
+---
+- name: Création des répertoires Traefik
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/traefik
+    - /opt/traefik/config
+    - /opt/traefik/logs
+    - /opt/traefik/certs
+
+- name: Copie de la configuration statique Traefik
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: /opt/traefik/traefik.yml
+    mode: "0644"
+  notify: Relancer Traefik
+
+- name: Copie de la configuration dynamique (routers/services)
+  ansible.builtin.template:
+    src: dynamic.yml.j2
+    dest: /opt/traefik/config/dynamic.yml
+    mode: "0644"
+  notify: Relancer Traefik
+
+- name: Copie du docker-compose Traefik
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/traefik/docker-compose.yml
+    mode: "0644"
+  notify: Relancer Traefik
+
+- name: Création du réseau Docker partagé
+  ansible.builtin.command: docker network create traefik
+  register: net_result
+  changed_when: net_result.rc == 0
+  failed_when: net_result.rc != 0 and 'already exists' not in net_result.stderr and 'already exists' not in net_result.stdout
+
+- name: Démarrage de Traefik
+  ansible.builtin.command: docker compose -f /opt/traefik/docker-compose.yml up -d
+  register: traefik_result
+  changed_when: traefik_result.rc == 0
+  notify: Vérifier Traefik

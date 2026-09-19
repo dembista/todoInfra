@@ -1,0 +1,63 @@
+---
+- name: Augmentation de vm.max_map_count (requis par Elasticsearch)
+  ansible.builtin.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Création des répertoires Sonarqube
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/sonarqube
+    - /opt/sonarqube/sonarqube_data
+    - /opt/sonarqube/sonarqube_extensions
+    - /opt/sonarqube/sonarqube_logs
+    - /opt/sonarqube/sonarqube_db_data
+
+- name: Permissions des volumes (uid 1000 = utilisateur du conteneur SonarQube)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0755"
+  loop:
+    - /opt/sonarqube/sonarqube_data
+    - /opt/sonarqube/sonarqube_extensions
+    - /opt/sonarqube/sonarqube_logs
+
+- name: Permissions du volume PostgreSQL (uid 999)
+  ansible.builtin.file:
+    path: /opt/sonarqube/sonarqube_db_data
+    state: directory
+    owner: "999"
+    group: "999"
+    mode: "0700"
+
+- name: Copie du docker-compose Sonarqube
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/sonarqube/docker-compose.yml
+    mode: "0644"
+  notify: Relancer Sonarqube
+
+- name: Démarrage de Sonarqube (PostgreSQL + application)
+  ansible.builtin.command: docker compose -f /opt/sonarqube/docker-compose.yml up -d
+  register: sonarqube_result
+  changed_when: sonarqube_result.rc == 0
+
+- name: Attente de la disponibilité de l'API Sonarqube
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9000/api/system/status"
+    status_code: 200
+    timeout: 5
+  register: sonarqube_status
+  until: sonarqube_status.json.status is defined and sonarqube_status.json.status == "UP"
+  retries: 60
+  delay: 10
+  changed_when: false

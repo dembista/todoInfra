@@ -1,0 +1,11 @@
+---
+- name: Relancer Sonarqube
+  ansible.builtin.command: docker compose -f /opt/sonarqube/docker-compose.yml up -d
+  register: sonarqube_result
+  changed_when: sonarqube_result.rc == 0
+
+- name: Vérifier que le conteneur Sonarqube tourne
+  ansible.builtin.command: docker inspect -f "{{ '{{.State.Running}}' }}" sonarqube
+  register: sonarqube_state
+  failed_when: sonarqube_state.stdout != "true"
+  changed_when: false

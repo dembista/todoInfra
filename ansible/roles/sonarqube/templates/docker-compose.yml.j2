@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  sonarqube:
+    image: sonarqube:{{ sonarqube_version }}
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on:
+      - sonarqube_db
+    environment:
+      SONAR_JDBC_URL: "jdbc:postgresql://sonarqube_db:5432/{{ sonarqube_db_name }}"
+      SONAR_JDBC_USERNAME: "{{ sonarqube_db_user }}"
+      SONAR_JDBC_PASSWORD: "{{ sonarqube_db_password }}"
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+      SONARQUBE_WEB_CONTEXT: "/"
+    volumes:
+      - /opt/sonarqube/sonarqube_data:/opt/sonarqube/data
+      - /opt/sonarqube/sonarqube_extensions:/opt/sonarqube/extensions
+      - /opt/sonarqube/sonarqube_logs:/opt/sonarqube/logs
+      - /etc/localtime:/etc/localtime:ro
+    ulimits:
+      nofile:
+        soft: 131072
+        hard: 131072
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+{% if domain_name %}
+      - "traefik.http.routers.sonarqube.rule=Host(`{{ sonarqube_host }}`)"
+      - "traefik.http.routers.sonarqube.entrypoints=web,websecure"
+      - "traefik.http.routers.sonarqube.tls=true"
+      - "traefik.http.routers.sonarqube.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sonarqube.loadbalancer.server.port=9000"
+{% else %}
+      - "traefik.http.routers.sonarqube.rule=Host(`sonarqube.local`)"
+      - "traefik.http.routers.sonarqube.entrypoints=web"
+      - "traefik.http.services.sonarqube.loadbalancer.server.port=9000"
+{% endif %}
+
+  sonarqube_db:
+    image: postgres:{{ sonarqube_postgres_version }}
+    container_name: sonarqube_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "{{ sonarqube_db_user }}"
+      POSTGRES_PASSWORD: "{{ sonarqube_db_password }}"
+      POSTGRES_DB: "{{ sonarqube_db_name }}"
+    volumes:
+      - /opt/sonarqube/sonarqube_db_data:/var/lib/postgresql/data
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

@@ -1,0 +1,31 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform.lock.hcl
+terraform/crash.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json
+
+# Nœuds
+*.pem
+*.key
+*.crt
+
+# Ansible
+ansible/collections/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Environnement
+.env
+*.env
+
+# Divers
+.DS_Store
+Thumbs.db
+*.log

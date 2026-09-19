@@ -1,0 +1,30 @@
+---
+# Variables communes à tous les environnements
+
+# Image Docker de l'application (GHCR) - surchargée par le CI/CD
+app_image: ghcr.io/your-org/todo-app:latest
+app_name: todo-app
+app_port: "3000"
+
+# Réseau Docker partagé avec Traefik
+traefik_network: traefik
+
+# Domaine public (laisser vide si aucun domaine)
+domain_name: ""
+
+# Email utilisé par Let's Encrypt (ACME contact) - refusé si domaine réservé (ex: example.com)
+traefik_acme_email: dembista@users.noreply.github.com
+
+# Hôtes virtuels (calculés selon le domaine)
+app_host: "{{ 'todo.' ~ domain_name if domain_name else 'todo-app.local' }}"
+traefik_host: "{{ 'traefik.' ~ domain_name if domain_name else 'traefik.local' }}"
+
+# Sonarqube
+sonarqube_host: "{{ 'sonarqube.' ~ domain_name if domain_name else 'sonarqube.local' }}"
+
+# Grafana
+grafana_admin_user: "admin"
+grafana_admin_password: "change-me-strong-password"
+
+# Secrets / variables surchargés par environnement via group_vars/{dev,prod}.yml
+# (non versionnés pour les secrets réels)
