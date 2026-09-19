@@ -41,5 +41,6 @@ jobs:
       - name: Exécuter le provisionnement
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_ROLES_PATH: "${{ github.workspace }}/ansible/roles"
         run: |
           ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/setup.yml
