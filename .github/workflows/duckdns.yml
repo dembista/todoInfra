@@ -1,0 +1,27 @@
+name: DuckDNS Auto-Update
+
+on:
+  schedule:
+    # Toutes les 5 minutes (limite DuckDNS: 5 min minimum)
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Mettre à jour le DNS DuckDNS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mettre à jour mbourouban.duckdns.org -> IP prod
+        run: |
+          TOKEN="${{ secrets.DUCKDNS_TOKEN }}"
+          IP="${{ vars.PROD_HOST }}"
+          if [ -z "$TOKEN" ] || [ -z "$IP" ]; then
+            echo "Video: secrets.DUCKDNS_TOKEN ou vars.PROD_HOST manquant"
+            exit 1
+          fi
+          RESP=$(curl -s --max-time 20 "https://www.duckdns.org/update?domains=mbourouban&token=${TOKEN}&ip=${IP}" || true)
+          echo "DuckDNS réponse: $RESP"
+          if [ "$RESP" != "OK" ]; then
+            echo "Échec de la mise à jour DuckDNS"
+            exit 1
+          fi
