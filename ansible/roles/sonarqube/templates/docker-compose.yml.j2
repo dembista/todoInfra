@@ -13,6 +13,8 @@ services:
       SONAR_JDBC_PASSWORD: "{{ sonarqube_db_password }}"
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
       SONARQUBE_WEB_CONTEXT: "/"
+    ports:
+      - "127.0.0.1:9000:9000"
     volumes:
       - /opt/sonarqube/sonarqube_data:/opt/sonarqube/data
       - /opt/sonarqube/sonarqube_extensions:/opt/sonarqube/extensions
